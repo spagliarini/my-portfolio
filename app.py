@@ -82,9 +82,31 @@ def generate_profile(api_key):
     }
     for key, default in defaults.items():
         profile.setdefault(key, default)
+    for key in ("name", "tagline", "current_position", "summary"):
+        if not isinstance(profile[key], str):
+            raise ValueError(f'The generated profile field "{key}" must be text.')
     for key in ("skills", "work_experience", "education"):
         if not isinstance(profile[key], list):
             raise ValueError(f'The generated profile field "{key}" must be a list.')
+    for job in profile["work_experience"]:
+        if not isinstance(job, dict) or not all(
+            isinstance(job.get(key), str) for key in ("title", "company", "dates")
+        ):
+            raise ValueError("Each work experience entry needs a title, company, and dates.")
+        job.setdefault("bullets", [])
+        if not isinstance(job["bullets"], list):
+            raise ValueError("Work experience bullets must be a list.")
+    for education in profile["education"]:
+        if not isinstance(education, dict) or not all(
+            isinstance(education.get(key), str)
+            for key in ("degree", "institution", "dates")
+        ):
+            raise ValueError(
+                "Each education entry needs a degree, institution, and dates."
+            )
+        education.setdefault("bullets", [])
+        if not isinstance(education["bullets"], list):
+            raise ValueError("Education bullets must be a list.")
 
     return profile
 
