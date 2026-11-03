@@ -99,7 +99,7 @@ data = compile_portfolio_from_repo(pdf_path, current_timestamp)
 st.title(f"👋 Welcome to the Portfolio of {data['name']}")
 st.subheader(data['tagline'])
 
-col1, col2 = st.columns()
+col1, col2 = st.columns(2)
 
 with col1:
     st.markdown("### 📝 About Me")
