@@ -257,7 +257,8 @@ if page == "Home":
     st.markdown("### 🛠️ Skills")
     skills = "".join(
         f'<span style="display:inline-block;padding:6px 12px;border-radius:16px;'
-        f'background-color:#f0f2f6;margin:0 8px 8px 0;">{html.escape(str(skill))}</span>'
+        f'background-color:var(--secondary-background-color);'
+        f'color:var(--text-color);margin:0 8px 8px 0;">{html.escape(str(skill))}</span>'
         for skill in data["skills"]
     )
     st.markdown(
