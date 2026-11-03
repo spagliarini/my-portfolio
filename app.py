@@ -7,6 +7,14 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
 
+DEFAULT_DATA = {
+    "name": "Silvia Pagliarini",
+    "tagline": "Senior Product Engineer | Generative AI & Agentic Systems | PhD Computer Science",
+    "summary": "summary",
+    "skills": ["Python", "Git"],
+    "work_experience": []
+}
+
 # 1. Page Configuration
 st.set_page_config(page_title="Silvia Pagliarini Portfolio", page_icon="💼", layout="wide")
 
@@ -26,47 +34,50 @@ with st.sidebar:
     st.caption("🤖 Powered by an automated Python Git-Parsing Agent.")
 
 # 3. Securely Load Your Gemini API Key from Streamlit Secrets
+api_key = None
 try:
     api_key = st.secrets["GEMINI_API_KEY"]
-    genai.configure(api_key=api_key)
-except Exception as e:
-    # 🚨 THIS WILL PRINT THE EXACT ERROR ON YOUR WEBPAGE FOR US TO READ
-    st.sidebar.error(f"⚠️ Gemini API Error: {e}")
+except Exception:
+    api_key = os.getenv("GEMINI_API_KEY")
+
+if not api_key:
+    st.sidebar.warning("⚠️ GEMINI_API_KEY is not set in Streamlit secrets or the environment.")
+else:
+    try:
+        genai.configure(api_key=api_key)
+    except Exception as e:
+        st.sidebar.error(f"⚠️ Gemini configuration failed: {e}")
 
 # 4. Smart Caching: Watch the file's modification timestamp
 # Streamlit will ONLY run this function if the timestamp of cv.pdf changes!
 @st.cache_data
 def compile_portfolio_from_repo(pdf_filename, file_timestamp):
-    # Fallback default data if things fail or key is missing
-    default_data = {
-        "name": "Silvia Pagliarini",
-        "tagline": "Senior Product Engineer | Generative AI & Agentic Systems | PhD Computer Science",
-        "summary": "summary",
-        "skills": ["Python", "Git"],
-        "experience": []
-    }
-    
     if not api_key:
-        return default_data
-        
+        return DEFAULT_DATA, "Missing GEMINI_API_KEY"
+
+    pdf_path = Path(pdf_filename)
+    if not pdf_path.exists():
+        return DEFAULT_DATA, f"CV file not found: {pdf_path}"
+
     try:
-        # Read the local cv.pdf cloned from your repository
-        reader = PdfReader(pdf_filename)
+        reader = PdfReader(str(pdf_path))
         raw_text = ""
         for page in reader.pages:
-            raw_text += page.extract_text()
-        
-        # Initialize the AI Client
-        client = genai.Client(api_key=api_key)
-        
+            text = page.extract_text() or ""
+            raw_text += text
+
+        model = genai.GenerativeModel("gemini-2.5-flash")
+
         prompt = f"""
-        You are an expert resume parsing agent. Analyze the following raw text from a CV/Resume. 
-        Extract the details into a clean, valid JSON format matching this schema exactly. 
-        Do not include any conversational text, markdown formatting, or code fences (no ```json). 
+        You are an expert resume parsing agent. Analyze the following raw text from a CV/Resume.
+        Extract the details into a clean, valid JSON format matching this schema exactly.
+        Do not include any conversational text, markdown formatting, or code fences (no ```json).
         Only output the raw JSON object string.
 
         JSON Schema Expected:
         {{
+            "name": "Full Name",
+            "tagline": "A punchy, professional title/headline",
             "summary": "A concise executive summary paragraph based on their profile",
             "skills": ["Skill1", "Skill2", "Skill3", "Skill4"],
             "work_experience": [
@@ -76,27 +87,30 @@ def compile_portfolio_from_repo(pdf_filename, file_timestamp):
                     "dates": "Years/Dates active",
                     "bullets": ["Achievement 1", "Achievement 2"]
                 }}
-            "education": [
-                {{
-                    "degree": "Degree Name",
-                    "institution": "Institution Name",
-                    "dates": "Years/Dates attended"
-                }}
             ]
         }}
 
         Raw Resume Text:
         {raw_text}
         """
-        
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt,
-        )
-        
-        return json.loads(response.text.strip())
+
+        response = model.generate_content(prompt)
+        response_text = (getattr(response, "text", "") or "").strip()
+        if response_text.startswith("```"):
+            response_text = response_text.strip("`")
+            if response_text.lower().startswith("json"):
+                response_text = response_text[4:].lstrip()
+
+        payload = json.loads(response_text)
+        payload.setdefault("name", DEFAULT_DATA["name"])
+        payload.setdefault("tagline", DEFAULT_DATA["tagline"])
+        payload.setdefault("summary", DEFAULT_DATA["summary"])
+        payload.setdefault("skills", DEFAULT_DATA["skills"])
+        payload.setdefault("work_experience", [])
+
+        return payload, None
     except Exception as e:
-        return default_data
+        return DEFAULT_DATA, str(e)
 
 # 5. Check the exact timestamp of cv.pdf right now
 pdf_path = BASE_DIR / "cv.pdf"
@@ -106,7 +120,10 @@ else:
     current_timestamp = 0.0
 
 # Pass the timestamp into the function. If it matches the cached run, the function skips entirely!
-data = compile_portfolio_from_repo(pdf_path, current_timestamp)
+data, parse_error = compile_portfolio_from_repo(str(pdf_path), current_timestamp)
+if parse_error:
+    st.sidebar.error(f"⚠️ Portfolio agent failed: {parse_error}")
+    st.warning("The app is using fallback placeholder data because the resume parsing step failed.")
 
 # 6. Render the Beautiful Main Portfolio Page Layout
 st.title(f"{data['name']}")
@@ -123,7 +140,7 @@ with col1:
     if not data['work_experience']:
         st.info("No work history found. Ensure cv.pdf is in your repo and API Key is added to settings.")
     else:
-        for job in data['experience']:
+        for job in data['work_experience']:
             with st.expander(f"{job['title']} — {job['company']} ({job['dates']})", expanded=True):
                 for bullet in job['bullets']:
                     st.markdown(f"- {bullet}")
