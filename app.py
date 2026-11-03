@@ -86,7 +86,7 @@ def compile_portfolio_from_repo(pdf_filename):
             text = page.extract_text() or ""
             raw_text += text
 
-        model = genai.GenerativeModel("gemini-3.8-flash")
+        model = genai.GenerativeModel("gemini-3.5-flash-lite")
 
         prompt = f"""
         You are an expert resume parsing agent. Analyze the following raw text from a CV/Resume.
