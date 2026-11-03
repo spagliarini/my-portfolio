@@ -10,7 +10,7 @@ st.set_page_config(page_title="Silvia Pagliarini Portfolio", page_icon="💼", l
 # 2. Sidebar Navigation & Contact Info
 with st.sidebar:
     st.title("Contact Info")
-    st.image("https://placeholder.com", width=150)
+    st.image("profile_pic.jpg", width=150)
     
     # 🔗 LINK YOUR LINKEDIN HERE:
     st.markdown("### 🔗 [Connect on LinkedIn](https://www.linkedin.com/in/silviapagliarini/)")
