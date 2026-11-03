@@ -1,6 +1,6 @@
 import streamlit as st
 from pypdf import PdfReader
-import google.genai as genai
+import google.generativeai as genai
 import json
 import os
 
@@ -23,6 +23,8 @@ try:
     api_key = st.secrets["GEMINI_API_KEY"]
 except Exception:
     api_key = os.getenv("GEMINI_API_KEY", "")
+if api_key:
+    genai.configure(api_key=api_key)
 
 # 4. Smart Caching: Watch the file's modification timestamp
 # Streamlit will ONLY run this function if the timestamp of cv.pdf changes!
