@@ -121,7 +121,8 @@ with col1:
         for edu in data.get('education', []):
             with st.expander(f"{edu['degree']} — {edu['institution']} ({edu['dates']})", expanded=True):
                 st.markdown(f"- {edu['degree']} from {edu['institution']} ({edu['dates']})")
-    
+
+with col2:    
     st.markdown("### 🛠️ Core Competencies")
     for skill in data['skills']:
         st.button(skill, disabled=True, key=f"btn_{skill}")
