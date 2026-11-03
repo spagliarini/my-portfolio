@@ -120,7 +120,7 @@ with col1:
     
     st.markdown("---")
     st.markdown("### 💼 Work History")
-    if not data['experience']:
+    if not data['work_experience']:
         st.info("No work history found. Ensure cv.pdf is in your repo and API Key is added to settings.")
     else:
         for job in data['experience']:
