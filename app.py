@@ -32,6 +32,7 @@ def compile_portfolio_from_repo(pdf_filename, file_timestamp):
     default_data = {
         "name": "Silvia Pagliarini",
         "tagline": "Senior Product Engineer | Generative AI & Agentic Systems | PhD Computer Science",
+        "summary": "summary",
         "skills": ["Python", "Git"],
         "experience": []
     }
