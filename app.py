@@ -30,9 +30,8 @@ except Exception:
 def compile_portfolio_from_repo(pdf_filename, file_timestamp):
     # Fallback default data if things fail or key is missing
     default_data = {
-        "name": "Your Name",
-        "tagline": "Professional Title",
-        "summary": "Please configure your GEMINI_API_KEY in your Streamlit Cloud settings to compile this site.",
+        "name": "Silvia Pagliarini",
+        "tagline": "Senior Product Engineer | Generative AI & Agentic Systems | PhD Computer Science",
         "skills": ["Python", "Git"],
         "experience": []
     }
