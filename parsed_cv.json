@@ -1,11 +1,115 @@
 {
-  "name": "Test Profile",
-  "tagline": "Test",
-  "current_position": "Engineer",
-  "summary": "Summary",
+  "name": "Silvia Pagliarini",
+  "tagline": "Senior Product Engineer | Generative AI & Agentic Systems | PhD Computer Science",
+  "current_position": "Senior Product Engineer at Fairmat",
+  "summary": "Senior Product Engineer with a PhD in Computer Science and experience translating advanced AI research into production-ready solutions. At Fairmat, I lead the technical development of AI components, specialising in Generative AI, agentic systems, NLP, and information extraction. My experience spans AI architecture, CI/CD, LLMOps, model lifecycle management, production monitoring, and secure deployment practices. I combine hands-on engineering with cross-functional technical coordination, working closely with software developers, IT specialists, and business experts. Previously, as a postdoctoral researcher at UCLA, I applied machine learning to computational neuroscience and language development. With an international background across four countries, I thrive in multidisciplinary and collaborative environments.",
   "skills": [
-    "Python"
+    "AI Engineering",
+    "AI Architecture",
+    "Generative AI",
+    "Agentic AI",
+    "LLM Applications",
+    "RAG",
+    "MCP",
+    "NLP",
+    "Information Extraction",
+    "Python",
+    "LangChain",
+    "LangGraph",
+    "SQL",
+    "MySQL",
+    "FAISS",
+    "Milvus",
+    "CI/CD",
+    "Automated Testing",
+    "Kubernetes",
+    "LLMOps",
+    "Model Lifecycle Management",
+    "Human-in-the-Loop Validation",
+    "Secure AI Development"
   ],
-  "work_experience": [],
-  "education": []
+  "work_experience": [
+    {
+      "title": "Senior Product Engineer",
+      "company": "Fairmat",
+      "dates": "Jan 2026 - Present",
+      "bullets": [
+        "Lead technical strategy and engineering for AI components across multiple products, contributing to architectural decisions and translating business requirements into scalable technical solutions.",
+        "Design and develop agentic AI assistants integrating enterprise documents, databases, and external tools through MCP-based architectures.",
+        "Architect and evaluate RAG and non-RAG pipelines, exploring retrieval strategies, emerging models, and frameworks.",
+        "Contribute to CI/CD workflows using TeamCity, automated testing, and deployments across Kubernetes-based development, testing, and production environments.",
+        "Coordinate with software engineering, infrastructure, and financial-domain stakeholders to align AI implementation with product requirements.",
+        "Integrate human-in-the-loop validation and qualitative evaluation to assess AI reliability and performance.",
+        "Support secure deployment, application lifecycle management, and internal technical training."
+      ]
+    },
+    {
+      "title": "AI Engineer",
+      "company": "Fairmat",
+      "dates": "Oct 2023 - Jan 2026",
+      "bullets": [
+        "Developed machine learning and NLP solutions for automated information extraction from complex financial documents and databases.",
+        "Designed LLM-based question-answering, classification, and information-retrieval pipelines.",
+        "Developed human-in-the-loop workflows to support validation, reliability, and continuous improvement.",
+        "Collaborated across engineering and business teams and supervised undergraduate and master's students."
+      ]
+    },
+    {
+      "title": "Machine Learning Engineer",
+      "company": "Fairmat",
+      "dates": "Aug 2022 - Oct 2023",
+      "bullets": [
+        "Researched and developed machine learning strategies for information retrieval from financial documents.",
+        "Built LLM-based question-answering and classification pipelines.",
+        "Contributed to continuous human validation and improvement of AI solutions."
+      ]
+    },
+    {
+      "title": "Postdoctoral Researcher",
+      "company": "University of California, Los Angeles",
+      "dates": "Sep 2021 - Jul 2022",
+      "bullets": [
+        "Applied machine learning and deep learning to research on infant language development.",
+        "Developed computational approaches to analyze vocal and behavioral data.",
+        "Collaborated with interdisciplinary researchers."
+      ]
+    },
+    {
+      "title": "PhD Researcher in Computer Science",
+      "company": "University of Bordeaux - INRIA",
+      "dates": "Nov 2017 - Mar 2021",
+      "bullets": [
+        "Conducted research on computational modeling of vocal learning in songbirds.",
+        "Applied machine learning, deep learning, CNNs, RNNs, and GANs to complex data.",
+        "Designed computational analyses and contributed to scientific publications."
+      ]
+    }
+  ],
+  "education": [
+    {
+      "degree": "PhD in Computer Science",
+      "institution": "University of Bordeaux",
+      "dates": "Mar 2021",
+      "bullets": [
+        "Research in neural networks, generative models, and vocal learning models."
+      ]
+    },
+    {
+      "degree": "MSc in Mathematics - Cum Laude",
+      "institution": "University of Verona",
+      "dates": "Mar 2017",
+      "bullets": [
+        "Focus on machine learning and partial differential equations.",
+        "Exchange studies at Universitat Autònoma de Barcelona."
+      ]
+    },
+    {
+      "degree": "BSc in Mathematics",
+      "institution": "University of Verona",
+      "dates": "Nov 2014",
+      "bullets": [
+        "Focus on modeling, ordinary differential equations, and Matlab."
+      ]
+    }
+  ]
 }
