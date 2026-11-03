@@ -3,6 +3,9 @@ from pypdf import PdfReader
 import google.generativeai as genai
 import json
 import os
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent
 
 # 1. Page Configuration
 st.set_page_config(page_title="Silvia Pagliarini Portfolio", page_icon="💼", layout="wide")
@@ -10,7 +13,11 @@ st.set_page_config(page_title="Silvia Pagliarini Portfolio", page_icon="💼", l
 # 2. Sidebar Navigation & Contact Info
 with st.sidebar:
     st.title("Contact Info")
-    st.image("profile_pic.jpg", width=150)
+    profile_pic = BASE_DIR / "profile_pic.jpg"
+    if profile_pic.exists():
+        st.image(str(profile_pic), width=150)
+    else:
+        st.image("https://placehold.co/150x150.png", width=150)
     
     # 🔗 LINK YOUR LINKEDIN HERE:
     st.markdown("### 🔗 [Connect on LinkedIn](https://www.linkedin.com/in/silviapagliarini/)")
@@ -21,10 +28,10 @@ with st.sidebar:
 # 3. Securely Load Your Gemini API Key from Streamlit Secrets
 try:
     api_key = st.secrets["GEMINI_API_KEY"]
-except Exception:
-    api_key = os.getenv("GEMINI_API_KEY", "")
-if api_key:
     genai.configure(api_key=api_key)
+except Exception as e:
+    # 🚨 THIS WILL PRINT THE EXACT ERROR ON YOUR WEBPAGE FOR US TO READ
+    st.sidebar.error(f"⚠️ Gemini API Error: {e}")
 
 # 4. Smart Caching: Watch the file's modification timestamp
 # Streamlit will ONLY run this function if the timestamp of cv.pdf changes!
@@ -92,9 +99,9 @@ def compile_portfolio_from_repo(pdf_filename, file_timestamp):
         return default_data
 
 # 5. Check the exact timestamp of cv.pdf right now
-pdf_path = "cv.pdf"
-if os.path.exists(pdf_path):
-    current_timestamp = os.path.getmtime(pdf_path)
+pdf_path = BASE_DIR / "cv.pdf"
+if pdf_path.exists():
+    current_timestamp = pdf_path.stat().st_mtime
 else:
     current_timestamp = 0.0
 
