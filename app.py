@@ -5,11 +5,11 @@ import json
 import os
 
 # 1. Page Configuration
-st.set_page_config(page_title="My AI-Compiled Portfolio", page_icon="💼", layout="wide")
+st.set_page_config(page_title="Silvia Pagliarini Portfolio", page_icon="💼", layout="wide")
 
 # 2. Sidebar Navigation & Contact Info
 with st.sidebar:
-    st.title("📌 Contact Info")
+    st.title("Contact Info")
     st.image("https://placeholder.com", width=150)
     
     # 🔗 LINK YOUR LINKEDIN HERE:
@@ -58,16 +58,20 @@ def compile_portfolio_from_repo(pdf_filename, file_timestamp):
 
         JSON Schema Expected:
         {{
-            "name": "Full Name",
-            "tagline": "A punchy, professional title/headline",
             "summary": "A concise executive summary paragraph based on their profile",
             "skills": ["Skill1", "Skill2", "Skill3", "Skill4"],
-            "experience": [
+            "work_experience": [
                 {{
                     "title": "Job Title",
                     "company": "Company Name",
                     "dates": "Years/Dates active",
                     "bullets": ["Achievement 1", "Achievement 2"]
+                }}
+            "education": [
+                {{
+                    "degree": "Degree Name",
+                    "institution": "Institution Name",
+                    "dates": "Years/Dates attended"
                 }}
             ]
         }}
@@ -96,7 +100,7 @@ else:
 data = compile_portfolio_from_repo(pdf_path, current_timestamp)
 
 # 6. Render the Beautiful Main Portfolio Page Layout
-st.title(f"👋 Welcome to the Portfolio of {data['name']}")
+st.title(f"{data['name']}")
 st.subheader(data['tagline'])
 
 col1, col2 = st.columns(2)
@@ -114,8 +118,10 @@ with col1:
             with st.expander(f"{job['title']} — {job['company']} ({job['dates']})", expanded=True):
                 for bullet in job['bullets']:
                     st.markdown(f"- {bullet}")
-
-with col2:
+        for edu in data.get('education', []):
+            with st.expander(f"{edu['degree']} — {edu['institution']} ({edu['dates']})", expanded=True):
+                st.markdown(f"- {edu['degree']} from {edu['institution']} ({edu['dates']})")
+    
     st.markdown("### 🛠️ Core Competencies")
     for skill in data['skills']:
         st.button(skill, disabled=True, key=f"btn_{skill}")
