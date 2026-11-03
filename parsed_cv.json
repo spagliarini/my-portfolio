@@ -2,6 +2,7 @@
   "name": "Silvia Pagliarini",
   "tagline": "Senior Product Engineer | Generative AI & Agentic Systems | PhD Computer Science",
   "current_position": "Senior Product Engineer at Fairmat",
+  "current_position_summary": "I lead the technical strategy and development of AI components across multiple products. I design agentic assistants and RAG pipelines, and help deliver them reliably through CI/CD, testing, Kubernetes deployments, and collaboration across engineering and business teams.",
   "summary": "Senior Product Engineer with a PhD in Computer Science and experience translating advanced AI research into production-ready solutions. At Fairmat, I lead the technical development of AI components, specialising in Generative AI, agentic systems, NLP, and information extraction. My experience spans AI architecture, CI/CD, LLMOps, model lifecycle management, production monitoring, and secure deployment practices. I combine hands-on engineering with cross-functional technical coordination, working closely with software developers, IT specialists, and business experts. Previously, as a postdoctoral researcher at UCLA, I applied machine learning to computational neuroscience and language development. With an international background across four countries, I thrive in multidisciplinary and collaborative environments.",
   "skills": [
     "AI Engineering",

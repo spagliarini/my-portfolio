@@ -37,6 +37,7 @@ def generate_profile(api_key):
         "name": "Full Name",
         "tagline": "Professional headline",
         "current_position": "Current job title and company",
+        "current_position_summary": "Concise summary of responsibilities and impact in the current role",
         "summary": "Concise professional summary",
         "skills": ["Skill"],
         "work_experience": [
@@ -75,6 +76,7 @@ def generate_profile(api_key):
         "name": "Silvia Pagliarini",
         "tagline": "",
         "current_position": "",
+        "current_position_summary": "",
         "summary": "",
         "skills": [],
         "work_experience": [],
@@ -82,7 +84,13 @@ def generate_profile(api_key):
     }
     for key, default in defaults.items():
         profile.setdefault(key, default)
-    for key in ("name", "tagline", "current_position", "summary"):
+    for key in (
+        "name",
+        "tagline",
+        "current_position",
+        "current_position_summary",
+        "summary",
+    ):
         if not isinstance(profile[key], str):
             raise ValueError(f'The generated profile field "{key}" must be text.')
     for key in ("skills", "work_experience", "education"):
@@ -218,6 +226,7 @@ if page == "Home":
     st.markdown("---")
     st.markdown("### Current Position")
     current_position = data["current_position"]
+    current_position_summary = data.get("current_position_summary", "")
     if not current_position:
         current_job = next(
             (
@@ -234,9 +243,14 @@ if page == "Home":
             current_position = (
                 f"{current_job.get('title', '')} — {current_job.get('company', '')}"
             ).strip(" —")
+            current_position_summary = current_position_summary or " ".join(
+                current_job.get("bullets", [])
+            )
         else:
             current_position = data["tagline"]
     st.write(current_position)
+    if current_position_summary:
+        st.write(current_position_summary)
 
     st.markdown("---")
     st.markdown("### 🛠️ Skills")
