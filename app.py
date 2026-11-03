@@ -11,9 +11,11 @@ JSON_CACHE_PATH = BASE_DIR / "parsed_cv.json"
 DEFAULT_DATA = {
     "name": "Silvia Pagliarini",
     "tagline": "Senior Product Engineer | Generative AI & Agentic Systems | PhD Computer Science",
+    "current_position": "",
     "summary": "Upload or add your cv.pdf to compile your executive profile.",
     "skills": ["Python", "Git", "Generative AI", "Agentic Systems"],
-    "work_experience": []
+    "work_experience": [],
+    "education": [],
 }
 
 # 1. Page Configuration
@@ -25,6 +27,11 @@ if "portfolio_data" not in st.session_state:
 
 # 2. Sidebar Navigation & Contact Info
 with st.sidebar:
+    page = st.radio(
+        "Menu",
+        ["Home", "Work Experience", "Education"],
+    )
+    st.markdown("---")
     st.title("Contact Info")
     profile_pic = BASE_DIR / "profile_pic.jpg"
     if profile_pic.exists():
@@ -98,6 +105,7 @@ def compile_portfolio_from_repo(pdf_filename):
         {{
             "name": "Full Name",
             "tagline": "A punchy, professional title/headline",
+            "current_position": "Current job title and company, if available",
             "summary": "A concise executive summary paragraph based on their profile",
             "skills": ["Skill1", "Skill2", "Skill3", "Skill4"],
             "work_experience": [
@@ -106,6 +114,14 @@ def compile_portfolio_from_repo(pdf_filename):
                     "company": "Company Name",
                     "dates": "Years/Dates active",
                     "bullets": ["Achievement 1", "Achievement 2"]
+                }}
+            ],
+            "education": [
+                {{
+                    "degree": "Degree or qualification",
+                    "institution": "Institution name",
+                    "dates": "Years/Dates attended",
+                    "bullets": ["Relevant detail or specialization"]
                 }}
             ]
         }}
@@ -124,9 +140,11 @@ def compile_portfolio_from_repo(pdf_filename):
         payload = json.loads(response_text)
         payload.setdefault("name", DEFAULT_DATA["name"])
         payload.setdefault("tagline", DEFAULT_DATA["tagline"])
+        payload.setdefault("current_position", DEFAULT_DATA["current_position"])
         payload.setdefault("summary", DEFAULT_DATA["summary"])
         payload.setdefault("skills", DEFAULT_DATA["skills"])
         payload.setdefault("work_experience", [])
+        payload.setdefault("education", [])
 
         # Write out to a permanent local backup json file so the API is never hit again
         with open(JSON_CACHE_PATH, "w", encoding="utf-8") as f:
@@ -158,6 +176,12 @@ elif pdf_path.exists():
     if not parse_error:
         st.session_state.portfolio_data = data
 
+# Keep older cached profiles compatible with the expanded profile schema.
+data.setdefault("current_position", DEFAULT_DATA["current_position"])
+data.setdefault("work_experience", [])
+data.setdefault("education", [])
+data.setdefault("skills", DEFAULT_DATA["skills"])
+
 # Notify user of alternative states in the sidebar safely
 if parse_error:
     st.sidebar.error(f"⚠️ Portfolio agent failed: {parse_error}")
@@ -165,33 +189,64 @@ if parse_error:
 elif JSON_CACHE_PATH.exists():
     st.sidebar.success("⚡ Data loaded instantly via local Git JSON-cache.")
 
-# 6. Render Layout Structure
+# 6. Render the selected page
 st.title(f"{data['name']}")
-st.subheader(data['tagline'])
 
-col1, col2 = st.columns(2)
-
-with col1:
+if page == "Home":
     st.markdown("### 📝 About Me")
     st.write(data['summary'])
-    
+
     st.markdown("---")
-    st.markdown("### 💼 Work History")
+    st.markdown("### Current Position")
+    current_position = data["current_position"]
+    if not current_position:
+        current_job = next(
+            (
+                job
+                for job in data["work_experience"]
+                if any(
+                    marker in str(job.get("dates", "")).lower()
+                    for marker in ("present", "current", "now")
+                )
+            ),
+            None,
+        )
+        if current_job:
+            current_position = (
+                f"{current_job.get('title', '')} — {current_job.get('company', '')}"
+            ).strip(" —")
+        else:
+            current_position = data["tagline"]
+    st.write(current_position)
+
+    st.markdown("---")
+    st.markdown("### 🛠️ Skills")
+    for skill in data['skills']:
+        st.button(skill, disabled=True, key=f"btn_{skill}")
+
+elif page == "Work Experience":
+    st.markdown("### 💼 Work Experience")
     if not data['work_experience']:
-        st.info("No work history layout resolved. Verify structural array parameters.")
+        st.info("No work experience is available.")
     else:
         for job in data['work_experience']:
             with st.expander(f"**{job['title']}** — {job['company']} ({job['dates']})", expanded=True):
-                for bullet in job['bullets']:
+                for bullet in job.get('bullets', []):
                     st.markdown(f"- {bullet}")
-                    
-        for edu in data.get('education', []):
-            with st.expander(f"**{edu['degree']}** — {edu['institution']} ({edu['dates']})", expanded=True):
-                st.markdown(f"- Completed specialization criteria.")
 
-with col2:    
-    st.markdown("### 🛠️ Core Competencies")
-    # Clean styling wrap for interactive button chips
-    for skill in data['skills']:
-        st.button(skill, disabled=True, key=f"btn_{skill}")
-        
+
+
+elif page == "Education":
+    st.markdown("### 🎓 Education")
+    if not data['education']:
+        st.info("No education history is available.")
+    else:
+        for edu in data['education']:
+            with st.expander(
+                f"**{edu.get('degree', 'Qualification')}** — "
+                f"{edu.get('institution', 'Institution not specified')} "
+                f"({edu.get('dates', 'Dates not specified')})",
+                expanded=True,
+            ):
+                for bullet in edu.get('bullets', []):
+                    st.markdown(f"- {bullet}")

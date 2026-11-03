@@ -1,2 +1,3 @@
 # my-portfolio
-My portfolio of experiences: a glimpse to understand my background
+
+A Streamlit portfolio with separate Home, Work Experience, and Education views. Contact information is available in the left sidebar.
