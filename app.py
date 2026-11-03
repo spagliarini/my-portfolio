@@ -1,92 +1,114 @@
 import streamlit as st
+from pypdf import PdfReader
+import google.genai as genai
+import json
 
-# 1. Page Configuration
-st.set_page_config(
-    page_title="My Interactive Portfolio",
-    page_icon="💼",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# Page config
+st.set_page_config(page_title="My AI-Compiled Portfolio", page_icon="💼", layout="wide")
 
-# 2. Sidebar / Navigation
+# Initialize session state so the site remembers your data after it parses
+if "profile_data" not in st.session_state:
+    st.session_state.profile_data = {
+        "name": "Your Name",
+        "tagline": "Your Professional Title",
+        "summary": "Upload your resume in the sidebar to populate this automatically!",
+        "skills": ["Python", "Data Analysis"],
+        "experience": []
+    }
+
+# --- SIDEBAR: THE AI AGENT ---
 with st.sidebar:
-    st.image("https://placeholder.com", caption="Your Name", width=150)
-    st.title("Navigation")
-    page = st.radio("Go to:", ["About Me", "Experience & Education", "Interactive Projects", "Contact"])
+    st.title("🤖 Resume Agent")
+    st.subheader("Compile Site via AI")
+    
+    # 1. API Key Input (Get a free one from Google AI Studio)
+    api_key = st.text_input("Enter Gemini API Key:", type="password", help="Get a free key from Google AI Studio")
+    st.markdown("[Get a Free Gemini API Key Key 🔗](https://google.com)")
+    
+    # 2. File Uploader
+    uploaded_file = st.file_uploader("Upload your CV (PDF)", type=["pdf"])
+    
+    if uploaded_file and api_key:
+        if st.button("🚀 Run AI Compiler"):
+            with st.spinner("Agent is extracting information from your CV..."):
+                try:
+                    # Read the PDF text
+                    reader = PdfReader(uploaded_file)
+                    raw_text = ""
+                    for page in reader.pages:
+                        raw_text += page.extract_text()
+                    
+                    # Initialize Gemini Client
+                    client = genai.Client(api_key=api_key)
+                    
+                    # Strict prompt instructing the agent to return ONLY raw JSON matching our structure
+                    prompt = f"""
+                    You are an expert resume parsing agent. Analyze the following raw text from a CV/Resume. 
+                    Extract the details into a clean, valid JSON format matching this schema exactly. 
+                    Do not include any conversational text, markdown formatting, or code fences (no ```json). 
+                    Only output the raw JSON object string.
+
+                    JSON Schema Expected:
+                    {{
+                        "name": "Full Name",
+                        "tagline": "A punchy, professional title/headline",
+                        "summary": "A concise executive summary paragraph based on their profile",
+                        "skills": ["Skill1", "Skill2", "Skill3", "Skill4"],
+                        "experience": [
+                            {{
+                                "title": "Job Title",
+                                "company": "Company Name",
+                                "dates": "Years/Dates active",
+                                "bullets": ["Achievement 1", "Achievement 2"]
+                            }}
+                        ]
+                    }}
+
+                    Raw Resume Text:
+                    {raw_text}
+                    """
+                    
+                    # Call the AI model
+                    response = client.models.generate_content(
+                        model='gemini-2.5-flash',
+                        contents=prompt,
+                    )
+                    
+                    # Parse the agent's output and update the page state
+                    parsed_json = json.loads(response.text.strip())
+                    st.session_state.profile_data = parsed_json
+                    st.success("🎉 Portfolio compiled successfully!")
+                    
+                except Exception as e:
+                    st.error(f"Error parsing resume: {e}")
+                    st.info("Tip: Double-check your API key and ensure the PDF text is highlightable.")
+
+    st.markdown("---")
+    st.caption("Push changes to GitHub after checking layout.")
+
+# --- MAIN CONTENT AREA: DISPLAY THE DYNAMIC PORTFOLIO ---
+data = st.session_state.profile_data
+
+st.title(f"👋 Welcome to the Portfolio of {data['name']}")
+st.subheader(data['tagline'])
+
+col1, col2 = st.columns([2, 1])
+
+with col1:
+    st.markdown("### 📝 About Me")
+    st.write(data['summary'])
     
     st.markdown("---")
-    st.markdown("🔗 **Connect with me:**")
-    st.markdown("[LinkedIn](https://linkedin.com)")
-    st.markdown("[GitHub](https://github.com)")
+    st.markdown("### 💼 Work History")
+    if not data['experience']:
+        st.info("No work history found yet. Upload a CV in the sidebar!")
+    else:
+        for job in data['experience']:
+            with st.expander(f"{job['title']} at {job['company']} ({job['dates']})", expanded=True):
+                for bullet in job['bullets']:
+                    st.markdown(f"- {bullet}")
 
-# 3. Page 1: About Me
-if page == "About Me":
-    st.title("👋 Welcome to My Portfolio")
-    st.subheader("Your Professional Tagline / Role (e.g., Data Scientist | Full Stack Developer)")
-    
-    col1, col2 = st.columns([2, 1])
-    with col1:
-        st.markdown("""
-        ### Executive Summary
-        Paste your LinkedIn 'About' section or CV summary here. 
-        Highly motivated professional with experience in building data-driven applications, 
-        solving complex problems, and scaling infrastructure.
-        """)
-    with col2:
-        st.markdown("### Core Skills")
-        skills = ["Python", "Streamlit", "Machine Learning", "SQL", "Git", "Project Management"]
-        for skill in skills:
-            st.button(skill, disabled=True, key=skill)
-
-# 4. Page 2: Experience & Education
-elif page == "Experience & Education":
-    st.title("💼 Work History & Education")
-    
-    st.markdown("### 🚀 Work Experience")
-    with st.expander("Senior Role Title — Company Name (2024 - Present)", expanded=True):
-        st.caption("📍 Location | Full-time")
-        st.markdown("""
-        - **Achievement 1:** Accomplished X, measured by Y, by doing Z.
-        - **Achievement 2:** Led a team of 4 to deploy a critical pipeline.
-        """)
-        
-    with st.expander("Junior Role Title — Previous Company (2022 - 2024)"):
-        st.caption("📍 Location | Remote")
-        st.markdown("""
-        - Developed and optimized Python scripts reducing runtime by 30%.
-        - Collaborative team player across cross-functional squads.
-        """)
-        
-    st.markdown("---")
-    st.markdown("### 🎓 Education")
-    st.markdown("**B.S. in Computer Science** — University Name *(Graduated 2022)*")
-
-# 5. Page 3: Interactive Projects (The "AI Hook")
-elif page == "Interactive Projects":
-    st.title("🛠️ Interactive Project Showcase")
-    st.write("Since this is built in Python, you can host actual live models or interactive data dashboards right here!")
-    
-    # Example interactive widget: A live mock ROI calculator or model simulator
-    st.markdown("### Project Feature: Business ROI Calculator")
-    st.write("Adjust the sliders below to see how my automation code saves company money in real time.")
-    
-    hours_saved = st.slider("Hours saved per week by automation:", 1, 40, 15)
-    hourly_rate = st.slider("Average hourly employee rate ($):", 20, 150, 50)
-    
-    yearly_savings = hours_saved * hourly_rate * 52
-    st.metric(label="Estimated Yearly Savings For Your Team", value=f"${yearly_savings:,}")
-
-# 6. Page 4: Contact
-elif page == "Contact":
-    st.title("📬 Get In Touch")
-    st.write("Feel free to reach out for collaborations or opportunities!")
-    
-    with st.form("contact_form"):
-        name = st.text_input("Name")
-        email = st.text_input("Email Address")
-        message = st.text_area("Your Message")
-        submit = st.form_submit_button("Send Message")
-        
-        if submit:
-            st.success(f"Thank you {name}! Your message has been sent successfully.")
-            
+with col2:
+    st.markdown("### 🛠️ Core Competencies")
+    for skill in data['skills']:
+        st.button(skill, disabled=True, key=f"btn_{skill}")
