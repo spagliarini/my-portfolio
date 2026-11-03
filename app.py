@@ -4,15 +4,16 @@ import json
 import os
 from pathlib import Path
 
-import google.generativeai as genai
 import streamlit as st
-from google.api_core.exceptions import GoogleAPIError
-from pypdf import PdfReader
 from streamlit.errors import StreamlitSecretNotFoundError
 
 BASE_DIR = Path(__file__).resolve().parent
 PROFILE_PATH = BASE_DIR / "parsed_cv.json"
 CV_PATH = BASE_DIR / "cv.pdf"
+
+
+class ProfileGenerationError(Exception):
+    pass
 
 
 def get_secret(name):
@@ -23,6 +24,10 @@ def get_secret(name):
 
 
 def generate_profile(api_key):
+    import google.generativeai as genai
+    from google.api_core.exceptions import GoogleAPIError
+    from pypdf import PdfReader
+
     if not CV_PATH.exists():
         raise FileNotFoundError(f"CV file not found: {CV_PATH}")
 
@@ -62,7 +67,10 @@ def generate_profile(api_key):
     CV text:
     {raw_text}
     """
-    response = model.generate_content(prompt)
+    try:
+        response = model.generate_content(prompt)
+    except GoogleAPIError as error:
+        raise ProfileGenerationError(f"Gemini profile generation failed: {error}") from error
     response_text = (getattr(response, "text", "") or "").strip()
     if response_text.startswith("```"):
         response_text = response_text.strip("`").strip()
@@ -193,7 +201,8 @@ with st.sidebar:
                             OSError,
                             ValueError,
                             json.JSONDecodeError,
-                            GoogleAPIError,
+                            ModuleNotFoundError,
+                            ProfileGenerationError,
                         ) as error:
                             st.error(f"Profile refresh failed: {error}")
                         else:
