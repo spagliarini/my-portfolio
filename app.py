@@ -1,3 +1,4 @@
+import html
 import hmac
 import json
 import os
@@ -254,8 +255,15 @@ if page == "Home":
 
     st.markdown("---")
     st.markdown("### 🛠️ Skills")
-    for skill in data['skills']:
-        st.button(skill, disabled=True, key=f"btn_{skill}")
+    skills = "".join(
+        f'<span style="display:inline-block;padding:6px 12px;border-radius:16px;'
+        f'background-color:#f0f2f6;margin:0 8px 8px 0;">{html.escape(str(skill))}</span>'
+        for skill in data["skills"]
+    )
+    st.markdown(
+        f'<div style="display:flex;flex-wrap:wrap;align-items:center;">{skills}</div>',
+        unsafe_allow_html=True,
+    )
 
 elif page == "Work Experience":
     st.markdown("### 💼 Work Experience")
