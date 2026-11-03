@@ -2,97 +2,104 @@ import streamlit as st
 from pypdf import PdfReader
 import google.genai as genai
 import json
+import os
 
-# Page config
+# 1. Page Configuration
 st.set_page_config(page_title="My AI-Compiled Portfolio", page_icon="💼", layout="wide")
 
-# Initialize session state so the site remembers your data after it parses
-if "profile_data" not in st.session_state:
-    st.session_state.profile_data = {
+# 2. Sidebar Navigation & Contact Info
+with st.sidebar:
+    st.title("📌 Contact Info")
+    st.image("https://placeholder.com", width=150)
+    
+    # 🔗 LINK YOUR LINKEDIN HERE:
+    st.markdown("### 🔗 [Connect on LinkedIn](https://www.linkedin.com/in/silviapagliarini/)")
+    
+    st.markdown("---")
+    st.caption("🤖 Powered by an automated Python Git-Parsing Agent.")
+
+# 3. Securely Load Your Gemini API Key from Streamlit Secrets
+try:
+    api_key = st.secrets["GEMINI_API_KEY"]
+except Exception:
+    api_key = os.getenv("GEMINI_API_KEY", "")
+
+# 4. Smart Caching: Watch the file's modification timestamp
+# Streamlit will ONLY run this function if the timestamp of cv.pdf changes!
+@st.cache_data
+def compile_portfolio_from_repo(pdf_filename, file_timestamp):
+    # Fallback default data if things fail or key is missing
+    default_data = {
         "name": "Your Name",
-        "tagline": "Your Professional Title",
-        "summary": "Upload your resume in the sidebar to populate this automatically!",
-        "skills": ["Python", "Data Analysis"],
+        "tagline": "Professional Title",
+        "summary": "Please configure your GEMINI_API_KEY in your Streamlit Cloud settings to compile this site.",
+        "skills": ["Python", "Git"],
         "experience": []
     }
-
-# --- SIDEBAR: THE AI AGENT ---
-with st.sidebar:
-    st.title("🤖 Resume Agent")
-    st.subheader("Compile Site via AI")
     
-    # 1. API Key Input (Get a free one from Google AI Studio)
-    api_key = st.text_input("Enter Gemini API Key:", type="password", help="Get a free key from Google AI Studio")
-    st.markdown("[Get a Free Gemini API Key Key 🔗](https://google.com)")
-    
-    # 2. File Uploader
-    uploaded_file = st.file_uploader("Upload your CV (PDF)", type=["pdf"])
-    
-    if uploaded_file and api_key:
-        if st.button("🚀 Run AI Compiler"):
-            with st.spinner("Agent is extracting information from your CV..."):
-                try:
-                    # Read the PDF text
-                    reader = PdfReader(uploaded_file)
-                    raw_text = ""
-                    for page in reader.pages:
-                        raw_text += page.extract_text()
-                    
-                    # Initialize Gemini Client
-                    client = genai.Client(api_key=api_key)
-                    
-                    # Strict prompt instructing the agent to return ONLY raw JSON matching our structure
-                    prompt = f"""
-                    You are an expert resume parsing agent. Analyze the following raw text from a CV/Resume. 
-                    Extract the details into a clean, valid JSON format matching this schema exactly. 
-                    Do not include any conversational text, markdown formatting, or code fences (no ```json). 
-                    Only output the raw JSON object string.
+    if not api_key:
+        return default_data
+        
+    try:
+        # Read the local cv.pdf cloned from your repository
+        reader = PdfReader(pdf_filename)
+        raw_text = ""
+        for page in reader.pages:
+            raw_text += page.extract_text()
+        
+        # Initialize the AI Client
+        client = genai.Client(api_key=api_key)
+        
+        prompt = f"""
+        You are an expert resume parsing agent. Analyze the following raw text from a CV/Resume. 
+        Extract the details into a clean, valid JSON format matching this schema exactly. 
+        Do not include any conversational text, markdown formatting, or code fences (no ```json). 
+        Only output the raw JSON object string.
 
-                    JSON Schema Expected:
-                    {{
-                        "name": "Full Name",
-                        "tagline": "A punchy, professional title/headline",
-                        "summary": "A concise executive summary paragraph based on their profile",
-                        "skills": ["Skill1", "Skill2", "Skill3", "Skill4"],
-                        "experience": [
-                            {{
-                                "title": "Job Title",
-                                "company": "Company Name",
-                                "dates": "Years/Dates active",
-                                "bullets": ["Achievement 1", "Achievement 2"]
-                            }}
-                        ]
-                    }}
+        JSON Schema Expected:
+        {{
+            "name": "Full Name",
+            "tagline": "A punchy, professional title/headline",
+            "summary": "A concise executive summary paragraph based on their profile",
+            "skills": ["Skill1", "Skill2", "Skill3", "Skill4"],
+            "experience": [
+                {{
+                    "title": "Job Title",
+                    "company": "Company Name",
+                    "dates": "Years/Dates active",
+                    "bullets": ["Achievement 1", "Achievement 2"]
+                }}
+            ]
+        }}
 
-                    Raw Resume Text:
-                    {raw_text}
-                    """
-                    
-                    # Call the AI model
-                    response = client.models.generate_content(
-                        model='gemini-2.5-flash',
-                        contents=prompt,
-                    )
-                    
-                    # Parse the agent's output and update the page state
-                    parsed_json = json.loads(response.text.strip())
-                    st.session_state.profile_data = parsed_json
-                    st.success("🎉 Portfolio compiled successfully!")
-                    
-                except Exception as e:
-                    st.error(f"Error parsing resume: {e}")
-                    st.info("Tip: Double-check your API key and ensure the PDF text is highlightable.")
+        Raw Resume Text:
+        {raw_text}
+        """
+        
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
+        )
+        
+        return json.loads(response.text.strip())
+    except Exception as e:
+        return default_data
 
-    st.markdown("---")
-    st.caption("Push changes to GitHub after checking layout.")
+# 5. Check the exact timestamp of cv.pdf right now
+pdf_path = "cv.pdf"
+if os.path.exists(pdf_path):
+    current_timestamp = os.path.getmtime(pdf_path)
+else:
+    current_timestamp = 0.0
 
-# --- MAIN CONTENT AREA: DISPLAY THE DYNAMIC PORTFOLIO ---
-data = st.session_state.profile_data
+# Pass the timestamp into the function. If it matches the cached run, the function skips entirely!
+data = compile_portfolio_from_repo(pdf_path, current_timestamp)
 
+# 6. Render the Beautiful Main Portfolio Page Layout
 st.title(f"👋 Welcome to the Portfolio of {data['name']}")
 st.subheader(data['tagline'])
 
-col1, col2 = st.columns([2, 1])
+col1, col2 = st.columns()
 
 with col1:
     st.markdown("### 📝 About Me")
@@ -101,10 +108,10 @@ with col1:
     st.markdown("---")
     st.markdown("### 💼 Work History")
     if not data['experience']:
-        st.info("No work history found yet. Upload a CV in the sidebar!")
+        st.info("No work history found. Ensure cv.pdf is in your repo and API Key is added to settings.")
     else:
         for job in data['experience']:
-            with st.expander(f"{job['title']} at {job['company']} ({job['dates']})", expanded=True):
+            with st.expander(f"{job['title']} — {job['company']} ({job['dates']})", expanded=True):
                 for bullet in job['bullets']:
                     st.markdown(f"- {bullet}")
 
