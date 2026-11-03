@@ -1,43 +1,118 @@
-import streamlit as st
-from pypdf import PdfReader
-import google.generativeai as genai
+import hmac
 import json
 import os
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent
-JSON_CACHE_PATH = BASE_DIR / "parsed_cv.json"
+import google.generativeai as genai
+import streamlit as st
+from google.api_core.exceptions import GoogleAPIError
+from pypdf import PdfReader
+from streamlit.errors import StreamlitSecretNotFoundError
 
-DEFAULT_DATA = {
-    "name": "Silvia Pagliarini",
-    "tagline": "Senior Product Engineer | Generative AI & Agentic Systems | PhD Computer Science",
-    "current_position": "",
-    "summary": "Upload or add your cv.pdf to compile your executive profile.",
-    "skills": ["Python", "Git", "Generative AI", "Agentic Systems"],
-    "work_experience": [],
-    "education": [],
-}
+BASE_DIR = Path(__file__).resolve().parent
+PROFILE_PATH = BASE_DIR / "parsed_cv.json"
+CV_PATH = BASE_DIR / "cv.pdf"
+
+
+def get_secret(name):
+    try:
+        return st.secrets.get(name) or os.getenv(name)
+    except StreamlitSecretNotFoundError:
+        return os.getenv(name)
+
+
+def generate_profile(api_key):
+    if not CV_PATH.exists():
+        raise FileNotFoundError(f"CV file not found: {CV_PATH}")
+
+    reader = PdfReader(str(CV_PATH))
+    raw_text = "\n".join(page.extract_text() or "" for page in reader.pages)
+
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel("gemini-3.5-flash-lite")
+    prompt = f"""
+    You are an expert resume parsing agent. Extract the CV into a valid JSON object.
+    Return only JSON, without markdown or conversational text, using this schema:
+    {{
+        "name": "Full Name",
+        "tagline": "Professional headline",
+        "current_position": "Current job title and company",
+        "summary": "Concise professional summary",
+        "skills": ["Skill"],
+        "work_experience": [
+            {{
+                "title": "Job title",
+                "company": "Company",
+                "dates": "Dates",
+                "bullets": ["Achievement"]
+            }}
+        ],
+        "education": [
+            {{
+                "degree": "Degree",
+                "institution": "Institution",
+                "dates": "Dates",
+                "bullets": ["Relevant detail"]
+            }}
+        ]
+    }}
+
+    CV text:
+    {raw_text}
+    """
+    response = model.generate_content(prompt)
+    response_text = (getattr(response, "text", "") or "").strip()
+    if response_text.startswith("```"):
+        response_text = response_text.strip("`").strip()
+        if response_text.lower().startswith("json"):
+            response_text = response_text[4:].lstrip()
+
+    profile = json.loads(response_text)
+    if not isinstance(profile, dict):
+        raise ValueError("The generated profile must be a JSON object.")
+
+    defaults = {
+        "name": "Silvia Pagliarini",
+        "tagline": "",
+        "current_position": "",
+        "summary": "",
+        "skills": [],
+        "work_experience": [],
+        "education": [],
+    }
+    for key, default in defaults.items():
+        profile.setdefault(key, default)
+    for key in ("skills", "work_experience", "education"):
+        if not isinstance(profile[key], list):
+            raise ValueError(f'The generated profile field "{key}" must be a list.')
+
+    return profile
+
+
+def save_profile(profile):
+    temporary_path = PROFILE_PATH.with_suffix(".json.tmp")
+    with temporary_path.open("w", encoding="utf-8") as profile_file:
+        json.dump(profile, profile_file, indent=2, ensure_ascii=False)
+        profile_file.write("\n")
+    temporary_path.replace(PROFILE_PATH)
 
 # 1. Page Configuration
 st.set_page_config(page_title="Silvia Pagliarini Portfolio", page_icon="💼", layout="wide")
 
-# Initialize persistent session state so background re-runs look at local memory first
-if "portfolio_data" not in st.session_state:
-    st.session_state.portfolio_data = None
-
 # 2. Sidebar Navigation & Contact Info
 with st.sidebar:
+    profile_pic = BASE_DIR / "profile_pic.jpg"
+    if profile_pic.exists():
+        st.image(str(profile_pic), width=150)
+    else:
+        st.image("https://placehold.co/150x150.png", width=150)
+
     page = st.radio(
         "Menu",
         ["Home", "Work Experience", "Education"],
     )
     st.markdown("---")
     st.title("Contact Info")
-    profile_pic = BASE_DIR / "profile_pic.jpg"
-    if profile_pic.exists():
-        st.image(str(profile_pic), width=150)
-    else:
-        st.image("https://placehold.co/150x150.png", width=150)
 
     st.markdown(
         """
@@ -62,134 +137,56 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
     st.markdown("---")
-    st.caption("🤖 Powered by an automated Python Git-Parsing Agent.")
+    st.caption("Profile content is maintained by Silvia.")
+    refresh_password = get_secret("PROFILE_REFRESH_PASSWORD")
+    if refresh_password:
+        with st.expander("Owner: refresh profile from CV"):
+            password = st.text_input(
+                "Owner password",
+                type="password",
+                key="profile_refresh_password",
+            )
+            if st.button("Regenerate profile", key="regenerate_profile"):
+                if not hmac.compare_digest(password, str(refresh_password)):
+                    st.error("Incorrect owner password.")
+                else:
+                    api_key = get_secret("GEMINI_API_KEY")
+                    if not api_key:
+                        st.error("GEMINI_API_KEY is not configured.")
+                    else:
+                        try:
+                            refreshed_profile = generate_profile(api_key)
+                            save_profile(refreshed_profile)
+                        except (
+                            FileNotFoundError,
+                            OSError,
+                            ValueError,
+                            json.JSONDecodeError,
+                            GoogleAPIError,
+                        ) as error:
+                            st.error(f"Profile refresh failed: {error}")
+                        else:
+                            st.session_state["refreshed_profile_json"] = json.dumps(
+                                refreshed_profile,
+                                indent=2,
+                                ensure_ascii=False,
+                            )
+                            st.success("Profile regenerated and loaded for this app instance.")
 
-# 3. Securely Load Your Gemini API Key from Streamlit Secrets
-api_key = None
-try:
-    api_key = st.secrets["GEMINI_API_KEY"]
-except Exception:
-    api_key = os.getenv("GEMINI_API_KEY")
+            refreshed_json = st.session_state.get("refreshed_profile_json")
+            if refreshed_json:
+                st.download_button(
+                    "Download refreshed profile JSON",
+                    data=refreshed_json,
+                    file_name="parsed_cv.json",
+                    mime="application/json",
+                )
 
-if api_key:
-    try:
-        genai.configure(api_key=api_key)
-    except Exception as e:
-        st.sidebar.error(f"⚠️ Gemini configuration failed: {e}")
+# 3. Load the shared, maintainer-managed profile snapshot.
+with PROFILE_PATH.open(encoding="utf-8") as profile_file:
+    data = json.load(profile_file)
 
-# 4. Heavy Compilation Function (Only triggers if cache files are missing)
-def compile_portfolio_from_repo(pdf_filename):
-    if not api_key:
-        return DEFAULT_DATA, "Missing GEMINI_API_KEY"
-
-    pdf_path = Path(pdf_filename)
-    if not pdf_path.exists():
-        return DEFAULT_DATA, f"CV file not found: {pdf_path}"
-
-    try:
-        reader = PdfReader(str(pdf_path))
-        raw_text = ""
-        for page in reader.pages:
-            text = page.extract_text() or ""
-            raw_text += text
-
-        model = genai.GenerativeModel("gemini-3.5-flash-lite")
-
-        prompt = f"""
-        You are an expert resume parsing agent. Analyze the following raw text from a CV/Resume.
-        Extract the details into a clean, valid JSON format matching this schema exactly.
-        Do not include any conversational text, markdown formatting, or code fences (no ```json).
-        Only output the raw JSON object string.
-
-        JSON Schema Expected:
-        {{
-            "name": "Full Name",
-            "tagline": "A punchy, professional title/headline",
-            "current_position": "Current job title and company, if available",
-            "summary": "A concise executive summary paragraph based on their profile",
-            "skills": ["Skill1", "Skill2", "Skill3", "Skill4"],
-            "work_experience": [
-                {{
-                    "title": "Job Title",
-                    "company": "Company Name",
-                    "dates": "Years/Dates active",
-                    "bullets": ["Achievement 1", "Achievement 2"]
-                }}
-            ],
-            "education": [
-                {{
-                    "degree": "Degree or qualification",
-                    "institution": "Institution name",
-                    "dates": "Years/Dates attended",
-                    "bullets": ["Relevant detail or specialization"]
-                }}
-            ]
-        }}
-
-        Raw Resume Text:
-        {raw_text}
-        """
-
-        response = model.generate_content(prompt)
-        response_text = (getattr(response, "text", "") or "").strip()
-        if response_text.startswith("```"):
-            response_text = response_text.strip("`")
-            if response_text.lower().startswith("json"):
-                response_text = response_text[4:].lstrip()
-
-        payload = json.loads(response_text)
-        payload.setdefault("name", DEFAULT_DATA["name"])
-        payload.setdefault("tagline", DEFAULT_DATA["tagline"])
-        payload.setdefault("current_position", DEFAULT_DATA["current_position"])
-        payload.setdefault("summary", DEFAULT_DATA["summary"])
-        payload.setdefault("skills", DEFAULT_DATA["skills"])
-        payload.setdefault("work_experience", [])
-        payload.setdefault("education", [])
-
-        # Write out to a permanent local backup json file so the API is never hit again
-        with open(JSON_CACHE_PATH, "w", encoding="utf-8") as f:
-            json.dump(payload, f, indent=4)
-
-        return payload, None
-    except Exception as e:
-        return DEFAULT_DATA, str(e)
-
-# 5. Smart Multi-Tier Cache Router
-data = DEFAULT_DATA
-parse_error = None
-pdf_path = BASE_DIR / "cv.pdf"
-
-# Tier 1: Look at current app interaction session state
-if st.session_state.portfolio_data is not None:
-    data = st.session_state.portfolio_data
-# Tier 2: Check if a pre-compiled JSON file already exists on the repo filesystem
-elif JSON_CACHE_PATH.exists():
-    try:
-        with open(JSON_CACHE_PATH, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            st.session_state.portfolio_data = data
-    except Exception as e:
-        parse_error = f"Failed reading local file cache: {e}"
-# Tier 3: If both are empty, execute the live API request exactly once
-elif pdf_path.exists():
-    data, parse_error = compile_portfolio_from_repo(str(pdf_path))
-    if not parse_error:
-        st.session_state.portfolio_data = data
-
-# Keep older cached profiles compatible with the expanded profile schema.
-data.setdefault("current_position", DEFAULT_DATA["current_position"])
-data.setdefault("work_experience", [])
-data.setdefault("education", [])
-data.setdefault("skills", DEFAULT_DATA["skills"])
-
-# Notify user of alternative states in the sidebar safely
-if parse_error:
-    st.sidebar.error(f"⚠️ Portfolio agent failed: {parse_error}")
-    st.warning("Using fallback placeholder data because compilation step encountered an exception.")
-elif JSON_CACHE_PATH.exists():
-    st.sidebar.success("⚡ Data loaded instantly via local Git JSON-cache.")
-
-# 6. Render the selected page
+# 4. Render the selected page
 st.title(f"{data['name']}")
 
 if page == "Home":
@@ -233,8 +230,6 @@ elif page == "Work Experience":
             with st.expander(f"**{job['title']}** — {job['company']} ({job['dates']})", expanded=True):
                 for bullet in job.get('bullets', []):
                     st.markdown(f"- {bullet}")
-
-
 
 elif page == "Education":
     st.markdown("### 🎓 Education")
